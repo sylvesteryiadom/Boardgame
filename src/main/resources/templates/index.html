@@ -9,9 +9,11 @@
     <nav th:replace="fragments/links :: nav.navigation-links"></nav>
 
     <main class="container">
-        <div class="p-4 p-md-5 mb-4 text-center">
+        <div class="hero-panel p-4 p-md-5 mb-4 text-center">
             <div class="container col-md-6">
+                <p class="deployment-badge mb-3">Fresh Deployment: Jenkins + SonarQube + Docker + EKS</p>
                 <h1>Boardgame Lists</h1>
+                <p class="lead hero-copy">Explore the collection, sign in to contribute, and verify the latest pipeline deployment live in the UI.</p>
 
                 <div id="error" class="error pt-3">
                     <div th:if="${userAddedMsg}">
