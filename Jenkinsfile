@@ -13,45 +13,37 @@ pipeline {
 
     environment {
         SCANNER_HOME = tool('sonar-scanner')
+        REPO_URL = 'https://github.com/sylvesteryiadom/Boardgame.git'
         DOCKER_IMAGE = 'sylvesteryiadom/boardgame:latest'
         K8S_SERVER_URL = 'https://4A5C0DFAEA555F1C802190CB4D7C4D49.gr7.us-east-1.eks.amazonaws.com'
         K8S_CLUSTER_NAME = 'devops-cluster'
         K8S_NAMESPACE = 'webapps'
+        K8S_DEPLOYMENT = 'boardgame-deployment'
+        MANIFEST = 'deployment-service.yaml'
     }
 
     stages {
-        stage('Git Checkout') {
+        stage('Checkout') {
             steps {
-                git branch: 'main', credentialsId: 'git-cred', url: 'https://github.com/sylvesteryiadom/Boardgame.git'
+                git branch: 'main', credentialsId: 'git-cred', url: env.REPO_URL
             }
         }
 
-        stage('Compile') {
+        stage('Build And Test') {
             steps {
-                sh 'mvn compile'
+                sh 'mvn -B -ntp clean verify'
             }
         }
 
-        stage('Test') {
-            steps {
-                sh 'mvn test'
-            }
-        }
-
-        stage('File System Scan') {
+        stage('Scan And Analyze') {
             steps {
                 sh 'trivy fs --format table -o trivy-fs-report.txt .'
-            }
-        }
-
-        stage('SonarQube Analysis') {
-            steps {
                 withSonarQubeEnv('sonar') {
                     sh """
                         ${SCANNER_HOME}/bin/sonar-scanner \
                         -Dsonar.projectName=BoardGame \
                         -Dsonar.projectKey=BoardGame \
-                        -Dsonar.java.binaries=.
+                        -Dsonar.java.binaries=target/classes
                     """
                 }
             }
@@ -59,45 +51,29 @@ pipeline {
 
         stage('Quality Gate') {
             steps {
-                waitForQualityGate abortPipeline: false, credentialsId: 'sonar-token'
+                waitForQualityGate abortPipeline: true, credentialsId: 'sonar-token'
             }
         }
 
-        stage('Build') {
-            steps {
-                sh 'mvn package'
-            }
-        }
-
-        stage('Publish To Nexus') {
+        stage('Publish Artifact') {
             steps {
                 withMaven(globalMavenSettingsConfig: 'global-settings', jdk: 'jdk17', maven: 'maven3') {
-                    sh 'mvn deploy'
+                    sh 'mvn -B -ntp deploy -DskipTests'
                 }
             }
         }
 
-        stage('Build Docker Image') {
+        stage('Build And Push Image') {
             steps {
                 sh 'docker build -t $DOCKER_IMAGE .'
-            }
-        }
-
-        stage('Docker Image Scan') {
-            steps {
                 sh 'trivy image --format table -o trivy-image-report.txt $DOCKER_IMAGE'
-            }
-        }
-
-        stage('Push Docker Image') {
-            steps {
                 withDockerRegistry(credentialsId: 'docker-cred', url: '') {
                     sh 'docker push $DOCKER_IMAGE'
                 }
             }
         }
 
-        stage('Deploy To Kubernetes') {
+        stage('Deploy') {
             steps {
                 withKubeConfig([
                     credentialsId: 'k8-cred',
@@ -106,22 +82,11 @@ pipeline {
                     namespace: env.K8S_NAMESPACE,
                     restrictKubeConfigAccess: true
                 ]) {
-                    sh 'kubectl apply -f deployment-service.yaml'
-                }
-            }
-        }
-
-        stage('Verify Deployment') {
-            steps {
-                withKubeConfig([
-                    credentialsId: 'k8-cred',
-                    serverUrl: env.K8S_SERVER_URL,
-                    clusterName: env.K8S_CLUSTER_NAME,
-                    namespace: env.K8S_NAMESPACE,
-                    restrictKubeConfigAccess: true
-                ]) {
-                    sh 'kubectl get pods -n $K8S_NAMESPACE'
-                    sh 'kubectl get svc -n $K8S_NAMESPACE'
+                    sh '''
+                        kubectl apply -f $MANIFEST
+                        kubectl rollout status deployment/$K8S_DEPLOYMENT -n $K8S_NAMESPACE --timeout=180s
+                        kubectl get svc -n $K8S_NAMESPACE
+                    '''
                 }
             }
         }
