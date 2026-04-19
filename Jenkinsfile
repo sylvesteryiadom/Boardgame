@@ -14,7 +14,8 @@ pipeline {
     environment {
         SCANNER_HOME = tool('sonar-scanner')
         REPO_URL = 'https://github.com/sylvesteryiadom/Boardgame.git'
-        DOCKER_IMAGE = 'sylvesteryiadom/boardgame:latest'
+        DOCKER_REPO = 'sylvesteryiadom/boardgame'
+        DOCKER_IMAGE = "${DOCKER_REPO}:${BUILD_NUMBER}"
         K8S_SERVER_URL = 'https://4A5C0DFAEA555F1C802190CB4D7C4D49.gr7.us-east-1.eks.amazonaws.com'
         K8S_CLUSTER_NAME = 'devops-cluster'
         K8S_NAMESPACE = 'webapps'
@@ -69,6 +70,8 @@ pipeline {
                 sh 'trivy image --format table -o trivy-image-report.txt $DOCKER_IMAGE'
                 withDockerRegistry(credentialsId: 'docker-cred', url: '') {
                     sh 'docker push $DOCKER_IMAGE'
+                    sh 'docker tag $DOCKER_IMAGE ${DOCKER_REPO}:latest'
+                    sh 'docker push ${DOCKER_REPO}:latest'
                 }
             }
         }
@@ -84,6 +87,7 @@ pipeline {
                 ]) {
                     sh '''
                         kubectl apply -f $MANIFEST
+                        kubectl set image deployment/$K8S_DEPLOYMENT boardgame=$DOCKER_IMAGE -n $K8S_NAMESPACE
                         kubectl rollout status deployment/$K8S_DEPLOYMENT -n $K8S_NAMESPACE --timeout=180s
                         kubectl get svc -n $K8S_NAMESPACE
                     '''
