@@ -13,7 +13,7 @@ pipeline {
     stages {
         stage('Git Checkout') {
             steps {
-                git branch: 'main', credentialsId: 'git-cred', url: 'https://github.com/abrahimcse/Boardgame.git'
+                git branch: 'main', credentialsId: 'git-cred', url: 'https://github.com/sylvesteryiadom/Boardgame.git'
             }
         }
 
@@ -74,7 +74,7 @@ pipeline {
             steps {
                 script {
                     withDockerRegistry(credentialsId: 'docker-cred', toolName: 'docker') {
-                        sh 'docker build -t abrahimcse/boardgame:latest .'
+                        sh 'docker build -t sylvesteryiadom/boardgame:latest .'
                     }
                 }
             }
@@ -90,7 +90,7 @@ pipeline {
             steps {
                 script {
                     withDockerRegistry(credentialsId: 'docker-cred', toolName: 'docker') {
-                        sh 'docker push abrahimcse/boardgame:latest'
+                        sh 'docker push sylvesteryiadom/boardgame:latest'
                     }
                 }
             }
@@ -114,7 +114,7 @@ pipeline {
             steps {
                 withKubeConfig(
                     credentialsId: 'k8-cred',
-                    serverUrl: 'https://172.31.40.100:6443',
+                    serverUrl: 'https://4A5C0DFAEA555F1C802190CB4D7C4D49.gr7.us-east-1.eks.amazonaws.com',
                     clusterName: 'kubernetes',
                     namespace: 'webapps',
                     restrictKubeConfigAccess: false
