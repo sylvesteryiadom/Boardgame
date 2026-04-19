@@ -1,13 +1,22 @@
 pipeline {
     agent any
 
+    options {
+        buildDiscarder(logRotator(numToKeepStr: '2'))
+        timestamps()
+    }
+
     tools {
         jdk 'jdk17'
         maven 'maven3'
     }
 
     environment {
-        SCANNER_HOME = tool 'sonar-scanner'
+        SCANNER_HOME = tool('sonar-scanner')
+        DOCKER_IMAGE = 'sylvesteryiadom/boardgame:latest'
+        K8S_SERVER_URL = 'https://4A5C0DFAEA555F1C802190CB4D7C4D49.gr7.us-east-1.eks.amazonaws.com'
+        K8S_CLUSTER_NAME = 'devops-cluster'
+        K8S_NAMESPACE = 'webapps'
     }
 
     stages {
@@ -31,28 +40,26 @@ pipeline {
 
         stage('File System Scan') {
             steps {
-                sh 'trivy fs --format table -o trivy-fs-report.html .'
+                sh 'trivy fs --format table -o trivy-fs-report.txt .'
             }
         }
 
         stage('SonarQube Analysis') {
             steps {
                 withSonarQubeEnv('sonar') {
-                    sh '''
+                    sh """
                         ${SCANNER_HOME}/bin/sonar-scanner \
                         -Dsonar.projectName=BoardGame \
                         -Dsonar.projectKey=BoardGame \
                         -Dsonar.java.binaries=.
-                    '''
+                    """
                 }
             }
         }
 
         stage('Quality Gate') {
             steps {
-                script {
-                    waitForQualityGate abortPipeline: false, credentialsId: 'sonar-token'
-                }
+                waitForQualityGate abortPipeline: false, credentialsId: 'sonar-token'
             }
         }
 
@@ -70,57 +77,51 @@ pipeline {
             }
         }
 
-        stage('Build & Tag Docker Image') {
+        stage('Build Docker Image') {
             steps {
-                script {
-                    withDockerRegistry(credentialsId: 'docker-cred', toolName: 'docker') {
-                        sh 'docker build -t sylvesteryiadom/boardgame:latest .'
-                    }
-                }
+                sh 'docker build -t $DOCKER_IMAGE .'
             }
         }
 
         stage('Docker Image Scan') {
             steps {
-                sh 'trivy image --format table -o trivy-image-report.html sylvesteryiadom/boardgame:latest'
+                sh 'trivy image --format table -o trivy-image-report.txt $DOCKER_IMAGE'
             }
         }
 
         stage('Push Docker Image') {
             steps {
-                script {
-                    withDockerRegistry(credentialsId: 'docker-cred', toolName: 'docker') {
-                        sh 'docker push sylvesteryiadom/boardgame:latest'
-                    }
+                withDockerRegistry(credentialsId: 'docker-cred', toolName: 'docker') {
+                    sh 'docker push $DOCKER_IMAGE'
                 }
             }
         }
 
         stage('Deploy To Kubernetes') {
             steps {
-                withKubeConfig(
+                withKubeConfig([
                     credentialsId: 'k8-cred',
-                    serverUrl: 'https://4A5C0DFAEA555F1C802190CB4D7C4D49.gr7.us-east-1.eks.amazonaws.com',
-                    clusterName: 'kubernetes',
-                    namespace: 'webapps',
-                    restrictKubeConfigAccess: false
-                ) {
+                    serverUrl: env.K8S_SERVER_URL,
+                    clusterName: env.K8S_CLUSTER_NAME,
+                    namespace: env.K8S_NAMESPACE,
+                    restrictKubeConfigAccess: true
+                ]) {
                     sh 'kubectl apply -f deployment-service.yaml'
                 }
             }
         }
 
-        stage('Verify the Deployment') {
+        stage('Verify Deployment') {
             steps {
-                withKubeConfig(
+                withKubeConfig([
                     credentialsId: 'k8-cred',
-                    serverUrl: 'https://4A5C0DFAEA555F1C802190CB4D7C4D49.gr7.us-east-1.eks.amazonaws.com',
-                    clusterName: 'kubernetes',
-                    namespace: 'webapps',
-                    restrictKubeConfigAccess: false
-                ) {
-                    sh 'kubectl get pods -n webapps'
-                    sh 'kubectl get svc -n webapps'
+                    serverUrl: env.K8S_SERVER_URL,
+                    clusterName: env.K8S_CLUSTER_NAME,
+                    namespace: env.K8S_NAMESPACE,
+                    restrictKubeConfigAccess: true
+                ]) {
+                    sh 'kubectl get pods -n $K8S_NAMESPACE'
+                    sh 'kubectl get svc -n $K8S_NAMESPACE'
                 }
             }
         }
