@@ -100,7 +100,7 @@ pipeline {
             steps {
                 withKubeConfig(
                     credentialsId: 'k8-cred',
-                    serverUrl: 'https://172.31.40.100:6443',
+                    serverUrl: 'https://4A5C0DFAEA555F1C802190CB4D7C4D49.gr7.us-east-1.eks.amazonaws.com',
                     clusterName: 'kubernetes',
                     namespace: 'webapps',
                     restrictKubeConfigAccess: false
