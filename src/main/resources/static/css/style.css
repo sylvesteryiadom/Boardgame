@@ -8,17 +8,17 @@ textarea {
 }
 
 .hero-panel {
-    background: linear-gradient(135deg, #f7fbff 0%, #eef6ff 100%);
-    border: 1px solid #d7e8ff;
+    background: linear-gradient(135deg, #fff5f0 0%, #ffe7d6 100%);
+    border: 1px solid #ffcfa8;
     border-radius: 1rem;
-    box-shadow: 0 12px 30px rgba(21, 71, 132, 0.08);
+    box-shadow: 0 12px 30px rgba(132, 66, 21, 0.12);
 }
 
 .deployment-badge {
     display: inline-block;
     padding: 0.45rem 0.9rem;
     border-radius: 999px;
-    background: #0d6efd;
+    background: #e8590c;
     color: #fff;
     font-size: 0.85rem;
     font-weight: 700;
