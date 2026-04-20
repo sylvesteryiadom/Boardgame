@@ -16,7 +16,7 @@ pipeline {
         REPO_URL = 'https://github.com/sylvesteryiadom/Boardgame.git'
         DOCKER_REPO = 'sylvesteryiadom/boardgame'
         DOCKER_IMAGE = "${DOCKER_REPO}:${BUILD_NUMBER}"
-        K8S_SERVER_URL = 'https://4A5C0DFAEA555F1C802190CB4D7C4D49.gr7.us-east-1.eks.amazonaws.com'
+        K8S_SERVER_URL = 'https://029F6D62EE3A232D134A561F85E37062.gr7.us-east-1.eks.amazonaws.com'
         K8S_CLUSTER_NAME = 'devops-cluster'
         K8S_NAMESPACE = 'webapps'
         K8S_DEPLOYMENT = 'boardgame-deployment'
