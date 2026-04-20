@@ -83,7 +83,7 @@ pipeline {
                     serverUrl: env.K8S_SERVER_URL,
                     clusterName: env.K8S_CLUSTER_NAME,
                     namespace: env.K8S_NAMESPACE,
-                    restrictKubeConfigAccess: true
+                    restrictKubeConfigAccess: false
                 ]) {
                     sh '''
                         kubectl apply -f $MANIFEST
